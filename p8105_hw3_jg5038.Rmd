@@ -39,6 +39,32 @@ instacart |>
 
 This dataset contains order information from instacart. It is organized by order and contains information about the products ordered, as well as information about the customer (i.e. how long it's been since they last ordered). It contains `r dim(instacart)[1]` observations and includes columns for `r colnames(instacart)`. For example, the first order in the dataset was made by `r unique(select(filter(instacart, order_id==1), user_id))` at `r unique(select(filter(instacart, order_id==1), order_hour_of_day))` o clock and we can see they ordered `r toString(select(filter(instacart, order_id==1), product_name))` (of which `r toString(select(filter(instacart, order_id==1, reordered==1), product_name))` were reordered).
 
+There are `r dim(unique(select(instacart, aisle)))[1]` unique aisles. Here is a table of the aisles most ordered from (just showing the top 10):
+
+```{r}
+instacart_aisle_sum_df = instacart |> 
+  group_by(aisle) |> 
+  summarize(
+    n = n()
+  ) |> 
+  arrange(desc(n)) 
+
+instacart_aisle_sum_df |> 
+  head(10) |> 
+  knitr::kable()
+```
+
+Now let's plot aisles with more than 10,000 items ordered from them:
+
+```{r}
+instacart_aisle_sum_df |> 
+  filter(n >= 10000) |> 
+  ggplot(aes(x=reorder(aisle, n), y=n)) +
+  geom_bar(stat="identity") +
+  coord_flip()
+```
+
+
 
 
 
