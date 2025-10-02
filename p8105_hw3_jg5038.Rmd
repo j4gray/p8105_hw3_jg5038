@@ -57,12 +57,30 @@ instacart_aisle_sum_df |>
 Now let's plot aisles with more than 10,000 items ordered from them:
 
 ```{r}
+#UPDATE labels and size to render correctly
 instacart_aisle_sum_df |> 
   filter(n >= 10000) |> 
   ggplot(aes(x=reorder(aisle, n), y=n)) +
   geom_bar(stat="identity") +
   coord_flip()
 ```
+
+In order to find the most popular items for each aisle let's group by:
+
+```{r}
+instacart_aisle_item_df = instacart |> 
+  group_by(aisle) |> 
+  count(product_name) |> 
+  mutate(
+    item_aisle_rank = min_rank(desc(n))
+    ) |> 
+  filter(aisle %in% c('baking ingredients', 'dog food care', 'packaged vegetables fruits'), item_aisle_rank <= 3) |> 
+  arrange(aisle, item_aisle_rank)
+
+knitr::kable(instacart_aisle_item_df)
+```
+
+
 
 
 
