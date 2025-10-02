@@ -25,3 +25,21 @@ options(
 scale_colour_discrete = scale_colour_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
 ```
+
+
+Problem 1
+
+```{r}
+data("instacart")
+
+instacart |> 
+  janitor::clean_names()
+
+```
+
+This dataset contains order information from instacart. It is organized by order and contains information about the products ordered, as well as information about the customer (i.e. how long it's been since they last ordered). It contains `r dim(instacart)[1]` observations and includes columns for `r colnames(instacart)`. For example, the first order in the dataset was made by `r unique(select(filter(instacart, order_id==1), user_id))` at `r unique(select(filter(instacart, order_id==1), order_hour_of_day))` o clock and we can see they ordered `r toString(select(filter(instacart, order_id==1), product_name))` (of which `r toString(select(filter(instacart, order_id==1, reordered==1), product_name))` were reordered).
+
+
+
+
+
