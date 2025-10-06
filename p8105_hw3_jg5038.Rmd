@@ -148,6 +148,19 @@ rent_zip_df = left_join(rent_df, zip_df, by = c("county", "zip_code")) |>
   relocate("zip_code", "neighborhood",  "date", "observed_rent_index")
 ```
 
+How many zipcodes are observed for all 116 months, how many observed less than 10 times?
+
+```{r}
+rent_zip_na = rent_zip_df |> 
+  group_by(zip_code) |> 
+  summarize(
+    n_observations = sum(!is.na(observed_rent_index))
+  )
+```
+
+There are `r dim(filter(rent_zip_na, n_observations==116))[1]` zipcodes with 116 observations and `r dim(filter(rent_zip_na, n_observations<10))[1]` with less than 10. The zipcodes with 116 observations are popular residential districts and the ones wit less than 10 are mixed between residential and commerical real estate (for example 10044 is Roosevelt Island). 
+
+
 
 
 
