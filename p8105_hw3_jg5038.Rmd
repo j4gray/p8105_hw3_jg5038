@@ -27,7 +27,7 @@ scale_fill_discrete = scale_fill_viridis_d
 ```
 
 
-Problem 1
+# Problem 1
 
 ```{r}
 data("instacart")
@@ -118,6 +118,35 @@ instacart_df |>
   knitr::kable()
 ```
 
+# Problem 2
+
+Import and tidy data
+```{r}
+zip_df = read_csv(file="./data/zillow_data/Zip Codes.csv") |> 
+  janitor::clean_names()
+
+rent_df = read_csv(file="./data/zillow_data/Zip_zori_uc_sfrcondomfr_sm_month_NYC.csv") |> 
+  janitor::clean_names() |> 
+  #update column names to match zip_df
+  rename(
+    zip_code = region_name,
+    county = county_name) |> 
+  mutate(
+    county = str_replace(county, " County", "")
+  ) |> 
+  pivot_longer(
+    cols=x2015_01_31:x2024_08_31,
+    names_to = "date",
+    values_to="observed_rent_index"
+  ) |> 
+  mutate(
+    #let's use the lubridate package
+    date = ymd(str_replace(date, "x", ""))
+  )
+
+rent_zip_df = left_join(rent_df, zip_df, by = c("county", "zip_code")) |> 
+  relocate("zip_code", "neighborhood",  "date", "observed_rent_index")
+```
 
 
 
