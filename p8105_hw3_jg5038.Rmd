@@ -32,8 +32,29 @@ Problem 1
 ```{r}
 data("instacart")
 
-instacart |> 
+instacart_df = instacart |> 
   janitor::clean_names()
+
+#order_dow is given as an integer but to make it human readable let's change it to a string. We don't know which day is which but in order to find out we can see the distribution by day and assume that the most orders happen on Saturday and Sunday
+
+instacart_df |> 
+  group_by(order_dow) |> 
+  summarize(n = n_distinct(order_id))
+
+#Let's assume that people order the most groceries on Monday so dow 0 = Monday
+
+instacart_df = instacart_df |> 
+  mutate(order_dow_string = 
+         case_match(
+           order_dow, 
+           0 ~ "Mon", 
+           1 ~ "Tues",
+           2 ~ "Weds",
+           3 ~ "Thurs", 
+           4 ~ "Fri",
+           5 ~ "Sat",
+           6 ~ "Sun"
+         ))
 
 ```
 
@@ -42,7 +63,7 @@ This dataset contains order information from instacart. It is organized by order
 There are `r dim(unique(select(instacart, aisle)))[1]` unique aisles. Here is a table of the aisles most ordered from (just showing the top 10):
 
 ```{r}
-instacart_aisle_sum_df = instacart |> 
+instacart_aisle_sum_df = instacart_df |> 
   group_by(aisle) |> 
   summarize(
     n = n()
@@ -68,7 +89,7 @@ instacart_aisle_sum_df |>
 In order to find the most popular items for each aisle let's group by:
 
 ```{r}
-instacart_aisle_item_df = instacart |> 
+instacart_aisle_item_df = instacart_df |> 
   group_by(aisle) |> 
   count(product_name) |> 
   mutate(
@@ -79,6 +100,24 @@ instacart_aisle_item_df = instacart |>
 
 knitr::kable(instacart_aisle_item_df)
 ```
+
+To make a table showing the mean hour per day at which items are ordered for each day of the week we will group by day and calculate the mean:
+
+```{r}
+instacart_df |> 
+  filter(product_name %in% c('Pink Lady Apples', 'Coffee Ice Cream')) |> 
+  group_by (product_name, order_dow_string) |> 
+  summarize(
+    mean_order_hour_of_day = round(mean(order_hour_of_day, na.rm = TRUE), digits=2)
+  ) |> 
+  pivot_wider(
+    names_from = order_dow_string,
+    values_from = mean_order_hour_of_day
+  ) |> 
+  select('product_name', 'Mon', 'Tues', 'Weds', 'Thurs', 'Fri', 'Sat', 'Sun') |> 
+  knitr::kable()
+```
+
 
 
 
