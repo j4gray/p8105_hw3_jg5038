@@ -132,7 +132,15 @@ rent_df = read_csv(file="./data/zillow_data/Zip_zori_uc_sfrcondomfr_sm_month_NYC
     zip_code = region_name,
     county = county_name) |> 
   mutate(
-    county = str_replace(county, " County", "")
+    county = str_replace(county, " County", ""),
+    borough = 
+      case_match(
+        county, 
+        "Bronx" ~ "Bronx", 
+        "Kings" ~ "Brooklyn",
+        "New York" ~ "Manhattan",
+        "Queens" ~ "Queens", 
+        "Richmond" ~ "Staten Island") 
   ) |> 
   pivot_longer(
     cols=x2015_01_31:x2024_08_31,
@@ -141,7 +149,8 @@ rent_df = read_csv(file="./data/zillow_data/Zip_zori_uc_sfrcondomfr_sm_month_NYC
   ) |> 
   mutate(
     #let's use the lubridate package
-    date = ymd(str_replace(date, "x", ""))
+    date = ymd(str_replace(date, "x", "")),
+    year = year(date)
   )
 
 rent_zip_df = left_join(rent_df, zip_df, by = c("county", "zip_code")) |> 
@@ -158,7 +167,52 @@ rent_zip_na = rent_zip_df |>
   )
 ```
 
-There are `r dim(filter(rent_zip_na, n_observations==116))[1]` zipcodes with 116 observations and `r dim(filter(rent_zip_na, n_observations<10))[1]` with less than 10. The zipcodes with 116 observations are popular residential districts and the ones wit less than 10 are mixed between residential and commerical real estate (for example 10044 is Roosevelt Island). 
+There are `r dim(filter(rent_zip_na, n_observations==116))[1]` zipcodes with 116 observations and `r dim(filter(rent_zip_na, n_observations<10))[1]` with less than 10. The zipcodes with 116 observations are popular residential districts and the ones wit less than 10 are mixed between residential and commercial real estate (for example 10044 is Roosevelt Island). 
+
+```{r}
+rent_zip_df |> 
+  group_by(borough, year) |> 
+  summarize(
+    average_rent_index = round(mean(observed_rent_index, na.rm = TRUE), digits=2)
+  ) |> 
+  pivot_wider(
+    names_from = year,
+    values_from = average_rent_index
+  ) |> 
+  knitr::kable()
+```
+
+Unsurprisingly, Manhattan has the highest average rent index. There is no data for Staten Island prior to 2020.
+
+```{r}
+rent_zip_df |> 
+  group_by(zip_code, borough, year) |> 
+  summarize(
+    average_rent_index = round(mean(observed_rent_index, na.rm = TRUE), digits=2)
+  ) |> 
+  ggplot(aes(x = year, y=average_rent_index, color=borough)) + 
+  geom_point(alpha = 0.5) +
+  geom_smooth(se = FALSE) + 
+  #geom_boxplot()
+  facet_grid(. ~ borough)
+```
+
+We can see Manhattan, in addition to having the highest average rent index, has the highest variance among all boroughs. 
+
+Let's see some boxplots for Manhattan for fun:
+
+```{r}
+rent_zip_df |> 
+  filter(borough == 'Manhattan') |> 
+  group_by(zip_code, year) |> 
+  ggplot(aes(x = year, y=observed_rent_index, group = year)) +
+  geom_boxplot()
+```
+
+
+
+
+
 
 
 
