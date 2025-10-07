@@ -7,6 +7,7 @@ output: github_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(patchwork)
 library(p8105.datasets)
 
 knitr::opts_chunk$set(
@@ -150,7 +151,8 @@ rent_df = read_csv(file="./data/zillow_data/Zip_zori_uc_sfrcondomfr_sm_month_NYC
   mutate(
     #let's use the lubridate package
     date = ymd(str_replace(date, "x", "")),
-    year = year(date)
+    year = year(date),
+    month = month(date)
   )
 
 rent_zip_df = left_join(rent_df, zip_df, by = c("county", "zip_code")) |> 
@@ -185,7 +187,7 @@ rent_zip_df |>
 Unsurprisingly, Manhattan has the highest average rent index. There is no data for Staten Island prior to 2020.
 
 ```{r}
-rent_zip_df |> 
+year_rent_graph = rent_zip_df |> 
   group_by(zip_code, borough, year) |> 
   summarize(
     average_rent_index = round(mean(observed_rent_index, na.rm = TRUE), digits=2)
@@ -195,6 +197,8 @@ rent_zip_df |>
   geom_smooth(se = FALSE) + 
   #geom_boxplot()
   facet_grid(. ~ borough)
+
+year_rent_graph
 ```
 
 We can see Manhattan, in addition to having the highest average rent index, has the highest variance among all boroughs. 
@@ -208,6 +212,32 @@ rent_zip_df |>
   ggplot(aes(x = year, y=observed_rent_index, group = year)) +
   geom_boxplot()
 ```
+
+```{r}
+#since each row is already 1 zipcode per month there is nothing to average, it will just be the rent index in the row. We can confirm this because when we calculate the mean it is the same as if we just filtered and grouped by (since the n is 1).
+month_rent_graph = rent_zip_df |>
+  filter(year == 2023) |> 
+  group_by(zip_code, borough, month) |> 
+  summarize(
+    average_rent_index = round(mean(observed_rent_index, na.rm = TRUE), digits=2)
+  ) |> 
+  ggplot(aes(x = month, y=average_rent_index, color=borough, group=month)) +
+  #geom_point() +
+  geom_boxplot() +
+  facet_grid(. ~ borough)
+
+month_rent_graph
+```
+
+Combine the two graphs:
+
+```{r}
+year_rent_graph / month_rent_graph
+ggsave('plots/zillow_rent_index_by_borough.pdf')
+```
+
+
+
 
 
 
