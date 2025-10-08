@@ -10,6 +10,7 @@ library(tidyverse)
 library(patchwork)
 library(p8105.datasets)
 
+
 knitr::opts_chunk$set(
   fig.width = 6,
   fig.asp = .6,
@@ -236,11 +237,74 @@ year_rent_graph / month_rent_graph
 ggsave('plots/zillow_rent_index_by_borough.pdf')
 ```
 
+# Problem 3
 
+Load, tidy, merge the dataset
 
+```{r}
+accel_df = read.csv('./data/nhanes/nhanes_accel.csv') |> 
+  janitor::clean_names() |> 
+  #use colnames(accel_df)[ncol(accel_df)] to get last colname
+  pivot_longer(
+    cols=min1:min1440,
+    names_to = "min",
+    values_to="MIMS"
+  ) |> 
+  mutate (
+    min = as.integer(str_remove(min, "min"))
+  )
 
+#sex: 2 = female
+#education: 1 = less than highschool, 2 = high school, 3 = more than highschool
+covar_df = read.csv('./data/nhanes/nhanes_covar.csv', skip = 4) |> 
+  #let's exlcude participants under 21, or missing demographic data before we merge
+  janitor::clean_names() |> 
+  filter(age >= 21, !is.na(sex), !is.na(bmi), !is.na(education)) |> 
+  mutate(
+    sex = case_match(
+      sex, 
+      1 ~ "male",
+      2 ~ "female"
+    ),
+    education_string = case_match(
+      education,
+      1 ~ "less than highschool",
+      2 ~ "highschool",
+      3 ~ "more than highschool"
+    )
+  )
 
+nhanes_df = left_join(covar_df, accel_df, by="seqn")
+```
 
+Let's produce a reader-friendly table for the number of men and women in each education category
+
+```{r}
+nhanes_df |> 
+  group_by(sex, education_string) |> 
+  summarize(
+    n = n_distinct(seqn)
+  ) |> 
+  pivot_wider(
+    names_from = education_string,
+    values_from = n
+  ) |> 
+  select(sex, `less than highschool`, `highschool`, `more than highschool`) |>  
+  knitr::kable()
+```
+
+Create vizualization of age distribution for men and women in each age category
+
+```{r}
+nhanes_df |> 
+  group_by(sex, age, education_string) |> 
+  summarize(
+    n = n_distinct(seqn)
+  ) |> 
+  ggplot(aes(x=age, color=sex)) +
+  geom_histogram() +
+  facet_grid(education_string ~ sex)
+```
 
 
 
