@@ -79,7 +79,7 @@ instacart_aisle_sum_df |>
 
 Now let's plot aisles with more than 10,000 items ordered from them:
 
-```{r}
+```{r fig.width=6, fig.height=4}
 #UPDATE labels and size to render correctly
 instacart_aisle_sum_df |> 
   filter(n >= 10000) |> 
@@ -170,7 +170,7 @@ rent_zip_na = rent_zip_df |>
   )
 ```
 
-There are `r dim(filter(rent_zip_na, n_observations==116))[1]` zipcodes with 116 observations and `r dim(filter(rent_zip_na, n_observations<10))[1]` with less than 10. The zipcodes with 116 observations are popular residential districts and the ones wit less than 10 are mixed between residential and commercial real estate (for example 10044 is Roosevelt Island). 
+There are `r dim(filter(rent_zip_na, n_observations==116))[1]` zipcodes with 116 observations and `r dim(filter(rent_zip_na, n_observations<10))[1]` with less than 10. The zipcodes with 116 observations are popular residential districts and the ones with less than 10 are mixed between residential and commercial real estate (for example 10044 is Roosevelt Island). 
 
 ```{r}
 rent_zip_df |> 
@@ -185,7 +185,7 @@ rent_zip_df |>
   knitr::kable()
 ```
 
-Unsurprisingly, Manhattan has the highest average rent index. There is no data for Staten Island prior to 2020.
+Unsurprisingly, Manhattan has the highest average rent index. There is no data for Staten Island prior to 2020. We can see the decrease caused by COVID across the other bouroughs.
 
 ```{r}
 year_rent_graph = rent_zip_df |> 
@@ -233,7 +233,7 @@ month_rent_graph
 Combine the two graphs:
 
 ```{r}
-year_rent_graph / month_rent_graph
+year_rent_graph / month_rent_graph + plot_layout(guide="collect")
 ggsave('plots/zillow_rent_index_by_borough.pdf')
 ```
 
@@ -248,6 +248,7 @@ accel_df = read.csv('./data/nhanes/nhanes_accel.csv') |>
   pivot_longer(
     cols=min1:min1440,
     names_to = "min",
+    #names_prefix("min"),
     values_to="MIMS"
   ) |> 
   mutate (
@@ -296,14 +297,27 @@ nhanes_df |>
 Create vizualization of age distribution for men and women in each age category
 
 ```{r}
+#change to demographic data
+
 nhanes_df |> 
-  group_by(sex, age, education_string) |> 
-  summarize(
-    n = n_distinct(seqn)
-  ) |> 
+  select(seqn, sex, age, education) |> 
+  distinct() |> 
+  #summarize(
+  #  n = n_distinct()
+  #) |> 
   ggplot(aes(x=age, color=sex)) +
-  geom_histogram() +
-  facet_grid(education_string ~ sex)
+  geom_histogram(aes(fill=sex), binwidth=5) +
+  facet_grid(sex ~ education)
+
+#covar_df |> 
+#  ggplot(aes(x=age, color=sex)) +
+#  geom_histogram(aes(fill=sex), binwidth=5) +
+#  facet_grid(sex ~ education)
+
+#covar_df |> 
+#  ggplot(aes(x=age, color=sex)) +
+#  geom_histogram(aes(fill=sex), binwidth=5)+
+#  facet_grid(sex~education)
 ```
 
 Comment
@@ -312,8 +326,8 @@ Traditional analyses of accelerometer data focus on the total activity over the 
 
 Let's make sure we're getting all participants:
 ```{r}
-#length(unique(select(nhanes_df, seqn)))
-length(unique(nhanes_df$seqn))
+length(unique(pull(nhanes_df, seqn)))
+#length(unique(nhanes_df$seqn))
 ```
 
 
@@ -325,9 +339,36 @@ nhanes_df |>
   ) |> 
   ggplot(aes(x=age, y=total_activity, color=sex)) +
   geom_point(alpha = 0.5) +
-  geom_smooth() +
-  facet_grid(education_string ~ sex)
+  geom_smooth(se = FALSE) +
+  facet_grid(education_string ~ .)
 ```
+
+Comment
+
+```{r}
+nhanes_df |> 
+  #let's start with just one person
+  filter(seqn==62161) |> 
+  #select(min) |> 
+  #range()
+  ggplot(aes(x=min, y=MIMS)) +
+  geom_point()
+
+
+nhanes_df |> 
+  group_by(min, sex, education_string) |> 
+  summarize(
+    mean_mims = mean(MIMS, na.rm = TRUE),
+    median_mims = median(MIMS, na.rm = TRUE)
+  ) |> 
+  ggplot(aes(x=min, y=median_mims, color=sex)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(se=FALSE) +
+  facet_grid(factor(education_string, levels=c('less than highschool','highschool','more than highschool')) ~ .)
+```
+
+
+
 
 
 
