@@ -306,6 +306,30 @@ nhanes_df |>
   facet_grid(education_string ~ sex)
 ```
 
+Comment
+
+Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
+
+Let's make sure we're getting all participants:
+```{r}
+#length(unique(select(nhanes_df, seqn)))
+length(unique(nhanes_df$seqn))
+```
+
+
+```{r}
+nhanes_df |> 
+  group_by(seqn, sex, age, education_string) |> 
+  summarize(
+    total_activity = sum(MIMS)
+  ) |> 
+  ggplot(aes(x=age, y=total_activity, color=sex)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth() +
+  facet_grid(education_string ~ sex)
+```
+
+
 
 
 
