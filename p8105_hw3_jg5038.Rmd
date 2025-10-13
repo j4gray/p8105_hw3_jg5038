@@ -10,10 +10,13 @@ library(tidyverse)
 library(patchwork)
 library(p8105.datasets)
 
+#these options were messing up my fig.height 
+#knitr::opts_chunk$set(
+#  fig.width = 6,
+#  fig.asp = .6
+#)
 
 knitr::opts_chunk$set(
-  fig.width = 6,
-  fig.asp = .6,
   out.width = "90%"
 )
 
@@ -31,20 +34,21 @@ scale_fill_discrete = scale_fill_viridis_d
 
 # Problem 1
 
-```{r}
+```{r message=FALSE}
 data("instacart")
 
 instacart_df = instacart |> 
   janitor::clean_names()
+```
 
-#order_dow is given as an integer but to make it human readable let's change it to a string. We don't know which day is which but in order to find out we can see the distribution by day and assume that the most orders happen on Saturday and Sunday
+order_dow is given as an integer but to make it human readable let's change it to a string. We don't know which day is which but in order to find out we can see the distribution by day and assume that the most orders happen on Monday (since on Saturday and Sunday people are more likely to go grocery shopping themselves).
 
+```{r}
 instacart_df |> 
   group_by(order_dow) |> 
   summarize(n = n_distinct(order_id))
 
-#Let's assume that people order the most groceries on Monday so dow 0 = Monday
-
+#since 0 had the highest number of orders let's make that Monday
 instacart_df = instacart_df |> 
   mutate(order_dow_string = 
          case_match(
@@ -57,10 +61,11 @@ instacart_df = instacart_df |>
            5 ~ "Sat",
            6 ~ "Sun"
          ))
-
 ```
 
-This dataset contains order information from instacart. It is organized by order and contains information about the products ordered, as well as information about the customer (i.e. how long it's been since they last ordered). It contains `r dim(instacart)[1]` observations and includes columns for `r colnames(instacart)`. For example, the first order in the dataset was made by `r unique(select(filter(instacart, order_id==1), user_id))` at `r unique(select(filter(instacart, order_id==1), order_hour_of_day))` o clock and we can see they ordered `r toString(select(filter(instacart, order_id==1), product_name))` (of which `r toString(select(filter(instacart, order_id==1, reordered==1), product_name))` were reordered).
+This dataset contains order information from instacart. It is organized by order and contains information about the products ordered, as well as information about the customer (i.e. how long it's been since they last ordered). It contains `r dim(instacart)[1]` observations and includes columns for `r colnames(instacart)`. 
+
+For example, the first order in the dataset was made by `r unique(select(filter(instacart, order_id==1), user_id))` at `r unique(select(filter(instacart, order_id==1), order_hour_of_day))` o clock and we can see they ordered `r toString(select(filter(instacart, order_id==1), product_name))` (of which `r toString(select(filter(instacart, order_id==1, reordered==1), product_name))` were reordered).
 
 There are `r dim(unique(select(instacart, aisle)))[1]` unique aisles. Here is a table of the aisles most ordered from (just showing the top 10):
 
@@ -79,16 +84,21 @@ instacart_aisle_sum_df |>
 
 Now let's plot aisles with more than 10,000 items ordered from them:
 
-```{r fig.width=6, fig.height=4}
-#UPDATE labels and size to render correctly
+```{r fig.width=6, fig.height=6}
 instacart_aisle_sum_df |> 
   filter(n >= 10000) |> 
   ggplot(aes(x=reorder(aisle, n), y=n)) +
   geom_bar(stat="identity") +
+  labs(
+        title = "Aisles with Most Orders from Instacart",
+        y = "Items Ordered",
+        x = "Aisle",
+        caption = "Aisles with >=10,000 items ordered"
+      ) +
   coord_flip()
 ```
 
-In order to find the most popular items for each aisle let's group by:
+In order to find the most popular items for each aisle let's use group by:
 
 ```{r}
 instacart_aisle_item_df = instacart_df |> 
@@ -123,7 +133,7 @@ instacart_df |>
 # Problem 2
 
 Import and tidy data
-```{r}
+```{r message=FALSE}
 zip_df = read_csv(file="./data/zillow_data/Zip Codes.csv") |> 
   janitor::clean_names()
 
@@ -160,7 +170,7 @@ rent_zip_df = left_join(rent_df, zip_df, by = c("county", "zip_code")) |>
   relocate("zip_code", "neighborhood",  "date", "observed_rent_index")
 ```
 
-How many zipcodes are observed for all 116 months, how many observed less than 10 times?
+In order to find how many zipcodes are observed for all 116 months and how many observed less than 10 times, we will use summarize:
 
 ```{r}
 rent_zip_na = rent_zip_df |> 
@@ -185,18 +195,23 @@ rent_zip_df |>
   knitr::kable()
 ```
 
-Unsurprisingly, Manhattan has the highest average rent index. There is no data for Staten Island prior to 2020. We can see the decrease caused by COVID across the other bouroughs.
+Unsurprisingly, Manhattan has the highest average rent index. There is no data for Staten Island prior to 2020. We can see the decrease caused by COVID across the other boroughs.
 
-```{r}
+```{r message = FALSE}
 year_rent_graph = rent_zip_df |> 
   group_by(zip_code, borough, year) |> 
   summarize(
     average_rent_index = round(mean(observed_rent_index, na.rm = TRUE), digits=2)
   ) |> 
   ggplot(aes(x = year, y=average_rent_index, color=borough)) + 
-  geom_point(alpha = 0.5) +
-  geom_smooth(se = FALSE) + 
-  #geom_boxplot()
+  geom_point(alpha = 0.5, show.legend=FALSE) +
+  geom_smooth(se = FALSE, show.legend=FALSE) + 
+  labs(
+        title = "Average Yearly Rent Index by Borough from 2015 to 2024",
+        x = "Year",
+        y = "Average Rent Index"
+      ) +
+  scale_x_continuous(breaks=seq(2015, 2024, 5)) +
   facet_grid(. ~ borough)
 
 year_rent_graph
@@ -211,11 +226,18 @@ rent_zip_df |>
   filter(borough == 'Manhattan') |> 
   group_by(zip_code, year) |> 
   ggplot(aes(x = year, y=observed_rent_index, group = year)) +
+  labs(
+        title = "Average Yearly Rent Index in Manhattan from 2015 to 2024",
+        x = "Year",
+        y = "Average Rent Index"
+      ) +
+  scale_x_continuous(breaks=seq(2015, 2024, 1)) +
   geom_boxplot()
 ```
 
+Since each row is already 1 zipcode per month there is nothing to average, it will just be the rent index in the row. We can confirm this because when we calculate the mean it is the same as if we just filtered and grouped by (since the n is 1).
+
 ```{r}
-#since each row is already 1 zipcode per month there is nothing to average, it will just be the rent index in the row. We can confirm this because when we calculate the mean it is the same as if we just filtered and grouped by (since the n is 1).
 month_rent_graph = rent_zip_df |>
   filter(year == 2023) |> 
   group_by(zip_code, borough, month) |> 
@@ -224,15 +246,24 @@ month_rent_graph = rent_zip_df |>
   ) |> 
   ggplot(aes(x = month, y=average_rent_index, color=borough, group=month)) +
   #geom_point() +
-  geom_boxplot() +
+  labs(
+        title = "Monthly Average Rent Index by Borough during 2023",
+        x = "Month",
+        y = "Average Rent Index"
+      ) +
+  scale_x_continuous(breaks=seq(1, 12, 3)) +
+  geom_boxplot(show.legend=FALSE) +
   facet_grid(. ~ borough)
 
 month_rent_graph
 ```
 
+Again we can see the higher average and higher variance in Manhattan and relatively low variance in Staten Island. There does not seem to be much difference across the months of year although there is a faint bump in June-August across all boroughs (especially in Manhattan), which likely corresponds to students coming to New York City for a summer internship. 
+
+
 Combine the two graphs:
 
-```{r}
+```{r fig.height=8}
 year_rent_graph / month_rent_graph + plot_layout(guide="collect")
 ggsave('plots/zillow_rent_index_by_borough.pdf')
 ```
@@ -255,8 +286,6 @@ accel_df = read.csv('./data/nhanes/nhanes_accel.csv') |>
     min = as.integer(str_remove(min, "min"))
   )
 
-#sex: 2 = female
-#education: 1 = less than highschool, 2 = high school, 3 = more than highschool
 covar_df = read.csv('./data/nhanes/nhanes_covar.csv', skip = 4) |> 
   #let's exlcude participants under 21, or missing demographic data before we merge
   janitor::clean_names() |> 
@@ -277,7 +306,7 @@ covar_df = read.csv('./data/nhanes/nhanes_covar.csv', skip = 4) |>
 nhanes_df = left_join(covar_df, accel_df, by="seqn")
 ```
 
-Let's produce a reader-friendly table for the number of men and women in each education category
+Let's produce a reader-friendly table for the number of men and women in each education category:
 
 ```{r}
 nhanes_df |> 
@@ -292,14 +321,19 @@ nhanes_df |>
   knitr::kable()
 ```
 
-Create vizualization of age distribution for men and women in each age category
+Let's create vizualization of age distribution for men and women in each age category:
 
 ```{r}
 nhanes_df |> 
   select(seqn, sex, age, education_factor) |> 
   distinct() |> 
   ggplot(aes(x=age, color=sex)) +
-  geom_histogram(aes(fill=sex), binwidth=5) +
+  geom_histogram(aes(fill=sex), binwidth=5, show.legend=FALSE) +
+  labs(
+        title = "Age Distribution by Education Level",
+        x = "Age",
+        y = "Count"
+      ) +
   facet_grid(sex ~ education_factor)
 
 #we can double check this is correct by using the original demographics data
@@ -309,16 +343,14 @@ nhanes_df |>
 #  facet_grid(sex ~ education)
 ```
 
-Comment
+We have the most participants in the 'more than highschool' education category and this is especially pronounced for women under 40.
 
-Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
+First, let's create a plot of total activity against age:
 
 Let's make sure we're getting all participants:
 ```{r}
 length(unique(pull(nhanes_df, seqn)))
-#length(unique(nhanes_df$seqn))
 ```
-
 
 ```{r}
 nhanes_df |> 
@@ -329,10 +361,15 @@ nhanes_df |>
   ggplot(aes(x=age, y=total_activity, color=sex)) +
   geom_point(alpha = 0.5) +
   geom_smooth(se = FALSE) +
+  labs(
+        title = "Total Activity by Age",
+        x = "Age",
+        y = "Total Activity (mins)"
+      ) +
   facet_grid(education_factor ~ .)
 ```
 
-Comment
+We can see that generally activity goes down with age and this was more pronounced in the participants with less than high school education. There was no significant different between men and women in any of the education groups 
 
 ```{r}
 #Test with a single person
@@ -341,7 +378,6 @@ Comment
 #  ggplot(aes(x=min, y=MIMS)) +
 #  geom_point()
 
-#convert minutes to hours
 nhanes_df |> 
   group_by(min, sex, education_factor) |> 
   summarize(
@@ -351,8 +387,20 @@ nhanes_df |>
   ggplot(aes(x=min, y=median_mims, color=sex)) +
   geom_point(alpha = 0.5) +
   geom_smooth(se=FALSE) +
+  labs(
+        title = "Median Activity throughout the Course of a Day",
+        x = "Time (mins)",
+        y = "Median MIMS"
+      ) +
+  scale_x_continuous(
+    name = "Time (hour)", #override mins labels
+    labels = function(x) x / 60,
+    breaks = seq(0, 1450, 60)
+  ) +
   facet_grid(education_factor ~ .)
 ```
+
+We can see that there is a general arc of activity throughout the day across all groups, which makes sense. In the education groups with highschool or more than highschool education we can see that females were slightly more active in the morning and middle of the day. 
 
 
 
